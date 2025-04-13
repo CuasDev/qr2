@@ -22,4 +22,3 @@ npm start or npm run dev
 ```
 cd frontend
 npm run dev
-
