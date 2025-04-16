@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { generateQR, getAllQRs, getQRById, deleteQR } from '../controllers/qrController.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 // Configuración de rutas para ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -42,10 +43,10 @@ const upload = multer({
 
 const router = express.Router();
 
-// Rutas
-router.post('/', upload.single('logo'), generateQR);
-router.get('/', getAllQRs);
-router.get('/:id', getQRById);
-router.delete('/:id', deleteQR);
+// Rutas para códigos QR - todas protegidas con autenticación
+router.post('/', protect, upload.single('logo'), generateQR);
+router.get('/', protect, getAllQRs);
+router.get('/:id', protect, getQRById);
+router.delete('/:id', protect, deleteQR);
 
 export default router;

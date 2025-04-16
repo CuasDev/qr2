@@ -1,16 +1,40 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../styles/QRHistory.css';
+import AuthModal from './AuthModal';
 
 const QRHistory = () => {
+  const navigate = useNavigate();
   const [qrCodes, setQrCodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  // Verificar si el usuario está autenticado
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      setIsLoggedIn(true);
+    }
+  }, []);
 
   // Cargar historial de códigos QR
   useEffect(() => {
+    // Si no está autenticado, no cargar los códigos QR
+    if (!isLoggedIn) {
+      setLoading(false);
+      return;
+    }
+
     const fetchQRCodes = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/qr');
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5000/api/qr', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         const data = await response.json();
 
         if (!response.ok) {
@@ -27,14 +51,22 @@ const QRHistory = () => {
     };
 
     fetchQRCodes();
-  }, []);
+  }, [isLoggedIn]);
 
   // Eliminar un código QR
   const deleteQR = async (id) => {
+    if (!isLoggedIn) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (window.confirm('¿Estás seguro de que deseas eliminar este código QR?')) {
       try {
+        const token = localStorage.getItem('token');
         const response = await fetch(`http://localhost:5000/api/qr/${id}`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         });
 
         if (!response.ok) {
@@ -66,9 +98,42 @@ const QRHistory = () => {
   if (loading) {
     return <div className="qr-history-loading">Cargando historial...</div>;
   }
+  
+  // Si no está autenticado, mostrar mensaje
+  if (!isLoggedIn) {
+    return (
+      <div className="qr-history">
+        <h2>Historial de Códigos QR</h2>
+        <div className="no-history">
+          <p>Debes iniciar sesión para ver tu historial de códigos QR.</p>
+          <button 
+            className="btn-auth" 
+            onClick={() => setIsAuthModalOpen(true)}
+          >
+            Iniciar Sesión
+          </button>
+        </div>
+        <AuthModal 
+          isOpen={isAuthModalOpen} 
+          onClose={() => setIsAuthModalOpen(false)} 
+          initialView="login" 
+        />
+      </div>
+    );
+  }
+
+  // Función para navegar a la vista de detalles
+  const viewQRDetail = (qrId) => {
+    navigate(`/qr/${qrId}`);
+  };
 
   return (
     <div className="qr-history">
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+        initialView="login" 
+      />
       <h2>Historial de Códigos QR</h2>
       
       {error && <div className="error">{error}</div>}
@@ -78,7 +143,7 @@ const QRHistory = () => {
       ) : (
         <div className="qr-grid">
           {qrCodes.map(qr => (
-            <div key={qr._id} className="qr-item">
+            <div key={qr._id} className="qr-item" onClick={() => viewQRDetail(qr._id)}>
               <div className="qr-image">
                 <img src={qr.imageUrl} alt={`Código QR para ${qr.text}`} />
               </div>
@@ -86,7 +151,7 @@ const QRHistory = () => {
                 <p className="qr-text">{qr.text.length > 30 ? `${qr.text.substring(0, 30)}...` : qr.text}</p>
                 <p className="qr-date">{new Date(qr.createdAt).toLocaleDateString()}</p>
               </div>
-              <div className="qr-actions">
+              <div className="qr-actions" onClick={(e) => e.stopPropagation()}>
                 <button 
                   onClick={() => downloadQR(qr)} 
                   className="btn-action btn-download"

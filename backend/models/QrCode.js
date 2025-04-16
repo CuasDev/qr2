@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
-const QrCodeSchema = new mongoose.Schema({
+const QrCodeSchema = new mongoose.Schema({  
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   text: {
     type: String,
     required: [true, 'El texto o URL para el código QR es obligatorio'],

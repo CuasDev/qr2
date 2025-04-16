@@ -26,9 +26,11 @@ app.use('/uploads', express.static(join(__dirname, 'uploads')));
 
 // Importar rutas
 import qrRoutes from './routes/qrRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 
 // Usar rutas
 app.use('/api/qr', qrRoutes);
+app.use('/api/auth', authRoutes);
 
 // Ruta principal
 app.get('/', (req, res) => {

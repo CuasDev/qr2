@@ -44,8 +44,9 @@ export const generateQR = async (req, res) => {
       qrDataUrl = await QRCode.toDataURL(text, options);
     }
     
-    // Guardar en la base de datos
+    // Guardar en la base de datos y asociar con el usuario autenticado
     const qrCode = new QrCode({
+      user: req.user._id, // Asociar con el usuario autenticado
       text,
       logo: logoPath,
       color: color || '#000000',
@@ -71,10 +72,12 @@ export const generateQR = async (req, res) => {
   }
 };
 
-// Obtener todos los códigos QR
+// Obtener todos los códigos QR del usuario autenticado
 export const getAllQRs = async (req, res) => {
   try {
-    const qrCodes = await QrCode.find().sort({ createdAt: -1 });
+    // Filtrar por usuario autenticado
+    const qrCodes = await QrCode.find({ user: req.user._id }).sort({ createdAt: -1 });
+    
     res.status(200).json({
       success: true,
       count: qrCodes.length,
@@ -119,13 +122,27 @@ export const getQRById = async (req, res) => {
 // Eliminar un código QR
 export const deleteQR = async (req, res) => {
   try {
-    const qrCode = await QrCode.findById(req.params.id);
+    const qrCode = await QrCode.findOne({
+      _id: req.params.id,
+      user: req.user._id // Verificar que pertenezca al usuario autenticado
+    });
     
     if (!qrCode) {
       return res.status(404).json({
         success: false,
         message: 'Código QR no encontrado'
       });
+    }
+    
+    // Eliminar el archivo de logo si existe
+    if (qrCode.logo) {
+      const logoPath = path.join(__dirname, '..', qrCode.logo);
+      try {
+        await fs.access(logoPath);
+        await fs.unlink(logoPath);
+      } catch (err) {
+        console.log('El archivo de logo no existe o no se pudo eliminar:', err);
+      }
     }
     
     await qrCode.deleteOne();
